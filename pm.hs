@@ -1,4 +1,6 @@
 import System.IO (hFlush, stdout)
+import qualified Data.Heap as Heap
+import Data.Foldable (toList)
 
 data Task = Task
   { description :: String
@@ -8,6 +10,19 @@ data Task = Task
   , roi :: Double
   } deriving (Show)
 
+
+instance Eq Task where
+    t1 == t2 =
+        (description t1, impact t1, urgency t1, effortEstimate t1, roi t1)
+        == (description t2, impact t2, urgency t2, effortEstimate t2, roi t2)
+
+instance Ord Task where
+  t1 `compare` t2 =
+    let priority1 = (impact t1 * urgency t1) `div` effortEstimate t1
+        priority2 = (impact t2 * urgency t2) `div` effortEstimate t2
+    in priority2 `compare` priority1
+
+type TaskQueue = Heap.Heap Task
 
 -- Prompt the user for a string input
 promptString :: String -> IO String
@@ -40,6 +55,16 @@ promptTask = do
 
 main :: IO ()
 main = do
+{-
+ - create a queue
+ - prompt user for task
+ - add task to the queue
+ - let user know if successful or not
+ - -}
+  let queue = Heap.empty
   task <- promptTask
   putStrLn ("New task created: " ++ show task)
+  let queue' = Heap.insert task queue
+  putStrLn "Current queue:"
+  mapM_ print (toList queue')
 
