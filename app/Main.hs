@@ -1,6 +1,17 @@
-import System.IO (hFlush, stdout)
-import qualified Data.Heap as Heap
+{-# LANGUAGE DeriveGeneric  #-}
+{-# LANGUAGE DeriveAnyClass #-}
+
+module Main where
+
+import Data.Aeson (ToJSON, FromJSON, object, (.=))
+import GHC.Generics
+import Data.Aeson.Encode.Pretty (encodePretty)
+import Data.Aeson.Types (ToJSON)
 import Data.Foldable (toList)
+import System.IO (hFlush, stdout)
+import System.IO (withFile, IOMode(WriteMode))
+import qualified Data.ByteString.Lazy as BSL
+import qualified Data.Heap as Heap
 
 data Task = Task
   { description :: String
@@ -8,7 +19,7 @@ data Task = Task
   , urgency :: Int
   , effortEstimate :: Int
   , roi :: Double
-  } deriving (Show)
+  } deriving (Show, Generic, ToJSON, FromJSON)
 
 
 instance Eq Task where
@@ -53,6 +64,12 @@ promptTask = do
   roi <- promptDouble "Enter the expected ROI of the task (as a decimal): "
   return (Task description impact urgency effortEstimate roi)
 
+
+writeQueueToFile :: TaskQueue -> IO ()
+writeQueueToFile queue = do
+  let serialized = encodePretty (toList queue)
+  BSL.writeFile "queue.json" serialized
+
 main :: IO ()
 main = do
 {-
@@ -67,4 +84,6 @@ main = do
   let queue' = Heap.insert task queue
   putStrLn "Current queue:"
   mapM_ print (toList queue')
+  writeQueueToFile queue'
+
 
