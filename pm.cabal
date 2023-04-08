@@ -36,7 +36,9 @@ executable pm
         aeson,
         aeson-pretty,
         bytestring,
-        heaps
+        heaps,
+        directory,
+        filepath
 
     hs-source-dirs:   app
     default-language: Haskell2010
