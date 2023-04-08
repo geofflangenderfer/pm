@@ -3,15 +3,18 @@
 
 module Main where
 
-import Data.Aeson (ToJSON, FromJSON, object, (.=))
-import GHC.Generics
+import Data.Aeson (ToJSON, FromJSON, object, decode)
 import Data.Aeson.Encode.Pretty (encodePretty)
 import Data.Aeson.Types (ToJSON)
 import Data.Foldable (toList)
+import GHC.Generics
+import System.Directory (doesFileExist)
+import System.FilePath (FilePath)
 import System.IO (hFlush, stdout)
 import System.IO (withFile, IOMode(WriteMode))
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Heap as Heap
+import Data.Heap (fromList)
 
 data Task = Task
   { description :: String
@@ -68,15 +71,34 @@ writeQueueToFile queue = do
   let serialized = encodePretty (toList queue)
   BSL.writeFile "queue.json" serialized
 
+getQueue :: FilePath -> IO (Heap.Heap Task)
+getQueue dbPath = do
+  fileExists <- doesFileExist dbPath
+  if fileExists
+    then decodeQueue dbPath
+    else return (Heap.empty)
+
+decodeQueue :: FilePath -> IO (Heap.Heap Task)
+decodeQueue dbPath = do
+  jsonData <- BSL.readFile dbPath
+
+  case decode jsonData :: Maybe [Task] of
+    Nothing     -> do
+        putStrLn ("Error: Failed to parse " ++ dbPath)
+        return (Heap.empty)
+    Just tasks -> return (fromList tasks)
+
 main :: IO ()
 main = do
 {-
- - create a queue
+ - load queue from json or create empty one
  - prompt user for task
  - add task to the queue
  - let user know if successful or not
+ - save queue to json
  - -}
-  let queue = Heap.empty
+  let dbPath = "queue.json"
+  queue <- getQueue dbPath
   task <- promptTask
   putStrLn ("New task created: " ++ show task)
   let queue' = Heap.insert task queue
