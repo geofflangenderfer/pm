@@ -14,7 +14,6 @@ import System.IO (hFlush, stdout)
 import System.IO (withFile, IOMode(WriteMode))
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Heap as Heap
-import Data.Heap (fromList)
 
 data Task = Task
   { description :: String
@@ -32,8 +31,8 @@ instance Eq Task where
 
 instance Ord Task where
   t1 `compare` t2 =
-    let priority1 = (impact t1 * urgency t1) `div` hoursEstimate t1
-        priority2 = (impact t2 * urgency t2) `div` hoursEstimate t2
+    let priority1 = roi t1
+        priority2 = roi t2
     in priority2 `compare` priority1
 
 -- Prompt the user for a string input
@@ -49,12 +48,6 @@ promptInt prompt = do
   input <- promptString prompt
   return (read input :: Int)
 
--- Prompt the user for a double input
-promptDouble :: String -> IO Double
-promptDouble prompt = do
-  input <- promptString prompt
-  return (read input :: Double)
-
 -- Prompt the user for a Task input
 promptTask :: IO Task
 promptTask = do
@@ -62,7 +55,9 @@ promptTask = do
   impact <- promptInt "Enter the impact of the task (1-10): "
   urgency <- promptInt "Enter the urgency of the task (1-10): "
   hoursEstimate <- promptInt "Enter the effort estimate of the task (in hours): "
-  roi <- promptDouble "Enter the expected ROI of the task (as a decimal): "
+
+  let roi = fromIntegral (impact * urgency) / fromIntegral hoursEstimate :: Double
+
   return (Task description impact urgency hoursEstimate roi)
 
 
@@ -86,7 +81,7 @@ decodeQueue dbPath = do
     Nothing     -> do
         putStrLn ("Error: Failed to parse " ++ dbPath)
         return (Heap.empty)
-    Just tasks -> return (fromList tasks)
+    Just tasks -> return (Heap.fromList tasks)
 
 main :: IO ()
 main = do
