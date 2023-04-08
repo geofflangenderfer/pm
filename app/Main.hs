@@ -33,7 +33,6 @@ instance Ord Task where
         priority2 = (impact t2 * urgency t2) `div` hoursEstimate t2
     in priority2 `compare` priority1
 
-type TaskQueue = Heap.Heap Task
 -- Prompt the user for a string input
 promptString :: String -> IO String
 promptString prompt = do
@@ -64,7 +63,7 @@ promptTask = do
   return (Task description impact urgency hoursEstimate roi)
 
 
-writeQueueToFile :: TaskQueue -> IO ()
+writeQueueToFile :: Heap.Heap Task -> IO ()
 writeQueueToFile queue = do
   let serialized = encodePretty (toList queue)
   BSL.writeFile "queue.json" serialized
