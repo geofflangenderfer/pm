@@ -92,7 +92,7 @@ main = do
  - let user know if successful or not
  - save queue to json
  - -}
-  let dbPath = "queue.json"
+  let dbPath = "stack_ranked_task_list.json"
   queue <- getQueue dbPath
   task <- promptTask
   putStrLn ("New task created: " ++ show task)
