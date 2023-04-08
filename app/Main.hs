@@ -61,10 +61,10 @@ promptTask = do
   return (Task description impact urgency hoursEstimate roi)
 
 
-writeQueueToFile :: Heap.Heap Task -> IO ()
-writeQueueToFile queue = do
+writeQueueToFile :: FilePath -> Heap.Heap Task -> IO ()
+writeQueueToFile dbPath queue = do
   let serialized = encodePretty (toList queue)
-  BSL.writeFile "queue.json" serialized
+  BSL.writeFile dbPath serialized
 
 getQueue :: FilePath -> IO (Heap.Heap Task)
 getQueue dbPath = do
@@ -99,6 +99,6 @@ main = do
   let queue' = Heap.insert task queue
   putStrLn "Current queue:"
   mapM_ print (toList queue')
-  writeQueueToFile queue'
+  writeQueueToFile dbPath queue'
 
 
