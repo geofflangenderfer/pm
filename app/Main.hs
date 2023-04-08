@@ -95,7 +95,7 @@ main = do
   let dbPath = "stack_ranked_task_list.json"
   queue <- getQueue dbPath
   task <- promptTask
-  putStrLn ("New task created: " ++ show task)
+  putStrLn ("New task created:\n" ++ show task)
   let queue' = Heap.insert task queue
   putStrLn "Current queue:"
   mapM_ print (toList queue')
