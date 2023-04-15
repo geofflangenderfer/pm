@@ -15,6 +15,12 @@ import System.IO (withFile, IOMode(WriteMode))
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Heap as Heap
 
+data Project = Project
+    { notStarted :: [Task]
+    , inProgress :: [Task]
+    , done :: [Task]
+    } deriving (Show, Generic, ToJSON, FromJSON)
+
 data Task = Task
   { description :: String
   , impact :: Int
