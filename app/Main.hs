@@ -145,7 +145,7 @@ buildTimeBlocks :: [TimeBlock] -> [Task] -> LocalTime -> [TimeBlock]
 buildTimeBlocks acc tasks time = case tasks of
     [] -> acc
     [t]
-        | (hoursEstimate t < 1) ->
+        | (hoursEstimate t <= 1) ->
             buildTimeBlocks
                 (acc ++ [TimeBlock time (addHoursToLocalTime time (hoursEstimate t)) t])
                 []
@@ -157,7 +157,7 @@ buildTimeBlocks acc tasks time = case tasks of
                 (addHoursToLocalTime time (hoursEstimate t))
 
     t:ts
-        | (hoursEstimate t < 1) ->
+        | (hoursEstimate t <= 1) ->
             buildTimeBlocks
                 (acc ++ [TimeBlock time (addHoursToLocalTime time (hoursEstimate t)) t])
                 ts
