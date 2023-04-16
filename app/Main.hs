@@ -1,19 +1,26 @@
-{-# LANGUAGE DeriveGeneric  #-}
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric  #-}
 
 module Main where
 
-import Data.Aeson (ToJSON, FromJSON, object, decode)
-import Data.Aeson.Encode.Pretty (encodePretty)
-import Data.Aeson.Types (ToJSON)
-import Data.Foldable (toList)
-import GHC.Generics
-import System.Directory (doesFileExist)
-import System.FilePath (FilePath)
-import System.IO (hFlush, stdout)
-import System.IO (withFile, IOMode(WriteMode))
-import qualified Data.ByteString.Lazy as BSL
-import qualified Data.Heap as Heap
+import           Data.Aeson               (FromJSON, ToJSON, decode, object)
+import           Data.Aeson.Encode.Pretty (encodePretty)
+import           Data.Aeson.Types         (ToJSON)
+import qualified Data.ByteString.Lazy     as BSL
+import           Data.Foldable            (foldl', toList)
+import qualified Data.Heap                as Heap
+import           Data.Maybe               (fromJust)
+import           Data.Time                (LocalTime, localTimeToUTC)
+import           Data.Time.Clock          (addUTCTime, getCurrentTime)
+import           Data.Time.LocalTime      (TimeZone, ZonedTime,
+                                           getCurrentTimeZone, getZonedTime,
+                                           hoursToTimeZone, utcToLocalTime)
+import           GHC.Generics
+import           System.Directory         (doesFileExist)
+import           System.FilePath          (FilePath)
+import           System.IO                (IOMode (WriteMode), hFlush, stdout,
 
 data Project = Project
     { notStarted :: [Task]
@@ -22,13 +29,12 @@ data Project = Project
     } deriving (Show, Generic, ToJSON, FromJSON)
 
 data Task = Task
-  { description :: String
-  , impact :: Int
-  , urgency :: Int
-  , hoursEstimate :: Int
-  , roi :: Double
+  { description   :: String
+  , impact        :: Int
+  , urgency       :: Int
+  , hoursEstimate :: Int -- should be many <= 1, one remainder > 1
+  , roi           :: Double
   } deriving (Show, Generic, ToJSON, FromJSON)
-
 
 instance Eq Task where
     t1 == t2 =
@@ -36,10 +42,7 @@ instance Eq Task where
         == (description t2, impact t2, urgency t2, hoursEstimate t2, roi t2)
 
 instance Ord Task where
-  t1 `compare` t2 =
-    let priority1 = roi t1
-        priority2 = roi t2
-    in priority2 `compare` priority1
+  t1 `compare` t2 = (roi t2) `compare` (roi t1)
 
 -- Prompt the user for a string input
 promptString :: String -> IO String
