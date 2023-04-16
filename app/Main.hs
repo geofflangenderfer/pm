@@ -125,18 +125,19 @@ popMaxPriorityTask :: Heap.Heap Task -> (Task, Heap.Heap Task)
 popMaxPriorityTask heap = fromJust $ Heap.uncons heap
 
 breakdownTask :: [Task] -> Task -> IO [Task]
-breakdownTask acc remainder =
-    -- check whether remainder has a time estimate less than 1 hour
+breakdownTask acc fatTask =
+    -- check whether fatTask has a time estimate less than 1 hour
     -- check that daily hours so far is below the daily limit
     let dailyHours = foldl' (+) 0 $ map (\t -> (hoursEstimate t)) acc
         dailyLimit = 3
-    in if hoursEstimate remainder < 1 && dailyHours < dailyLimit
+    in if hoursEstimate fatTask < 1 || dailyHours >= dailyLimit
         then do
+            return $ acc ++ [fatTask]
+        else do
+            putStrLn $ "This task is too fat:\n" ++ show fatTask
             putStrLn "We're going to break down a large task into smaller chunks. What's the next step you can complete in under an hour?"
-            remainder2 <- promptTask
-            breakdownTask (acc ++ [remainder2]) (remainder {hoursEstimate = (hoursEstimate remainder) - (hoursEstimate remainder2)})
-        else
-            return $ acc ++ [remainder]
+            fatTask2 <- promptTask
+            breakdownTask (acc ++ [fatTask2]) (fatTask {hoursEstimate = (hoursEstimate fatTask) - (hoursEstimate fatTask2)})
 
 -- I use a guard here to skip when we encounter a task with > 1 hour time
 -- estimate. I only want to time block chunked tasks.
