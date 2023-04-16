@@ -21,6 +21,17 @@ import           GHC.Generics
 import           System.Directory         (doesFileExist)
 import           System.FilePath          (FilePath)
 import           System.IO                (IOMode (WriteMode), hFlush, stdout,
+                                           withFile)
+
+data Calendar = Calendar
+    { timeBlocks :: [TimeBlock]
+    } deriving (Show, Generic, FromJSON, ToJSON)
+
+data TimeBlock = TimeBlock
+    { startTime :: LocalTime
+    , endTime   :: LocalTime
+    , task      :: Task
+    } deriving (Show, Generic, FromJSON, ToJSON)
 
 data Project = Project
     { notStarted :: [Task]
@@ -41,6 +52,8 @@ instance Eq Task where
         (description t1, impact t1, urgency t1, hoursEstimate t1, roi t1)
         == (description t2, impact t2, urgency t2, hoursEstimate t2, roi t2)
 
+-- this ensures that a higher roi gets precedence
+-- if we flipped the order, it would turn our max into a min heap
 instance Ord Task where
   t1 `compare` t2 = (roi t2) `compare` (roi t1)
 
@@ -80,7 +93,8 @@ getQueue dbPath = do
   fileExists <- doesFileExist dbPath
   if fileExists
     then decodeQueue dbPath
-    else return (Heap.empty)
+    else do
+        return (Heap.empty)
 
 decodeQueue :: FilePath -> IO (Heap.Heap Task)
 decodeQueue dbPath = do
@@ -92,22 +106,121 @@ decodeQueue dbPath = do
         return (Heap.empty)
     Just tasks -> return (Heap.fromList tasks)
 
+writeCalendarToFile :: FilePath -> Calendar -> IO ()
+writeCalendarToFile calendarPath calendar = do
+  BSL.writeFile calendarPath $ encodePretty calendar
+
+decodeCalendar :: FilePath -> IO Calendar
+decodeCalendar calendarPath = do
+  jsonData <- BSL.readFile calendarPath
+
+  case decode jsonData :: Maybe Calendar of
+    Nothing     -> do
+        putStrLn ("Error: Failed to parse " ++ calendarPath)
+        return $ Calendar {timeBlocks = []}
+    Just calendar -> return calendar
+
+deserializeCalendar :: FilePath -> IO Calendar
+deserializeCalendar calendarPath = do
+  fileExists <- doesFileExist calendarPath
+  if fileExists
+    then decodeCalendar calendarPath
+    else return $ Calendar {timeBlocks = []}
+
+popMaxPriorityTask :: Heap.Heap Task -> (Task, Heap.Heap Task)
+popMaxPriorityTask heap = fromJust $ Heap.uncons heap
+
+breakdownTask :: [Task] -> Task -> IO [Task]
+breakdownTask acc remainder =
+    -- check whether remainder has a time estimate less than 1 hour
+    -- check that daily hours so far is below the daily limit
+    let dailyHours = foldl' (+) 0 $ map (\t -> (hoursEstimate t)) acc
+        dailyLimit = 3
+    in if hoursEstimate remainder < 1 && dailyHours < dailyLimit
+        then do
+            putStrLn "We're going to break down a large task into smaller chunks. What's the next step you can complete in under an hour?"
+            remainder2 <- promptTask
+            breakdownTask (acc ++ [remainder2]) (remainder {hoursEstimate = (hoursEstimate remainder) - (hoursEstimate remainder2)})
+        else
+            return $ acc ++ [remainder]
+
+-- I use a guard here to skip when we encounter a task with > 1 hour time
+-- estimate. I only want to time block chunked tasks.
+buildTimeBlocks :: [TimeBlock] -> [Task] -> LocalTime -> [TimeBlock]
+buildTimeBlocks acc tasks time = case tasks of
+    [] -> acc
+    [t]
+        | (hoursEstimate t < 1) ->
+            buildTimeBlocks
+                (acc ++ [TimeBlock time (addHoursToLocalTime time (hoursEstimate t)) t])
+                []
+                (addHoursToLocalTime time (hoursEstimate t))
+        | otherwise ->
+            buildTimeBlocks
+                acc
+                []
+                (addHoursToLocalTime time (hoursEstimate t))
+
+    t:ts
+        | (hoursEstimate t < 1) ->
+            buildTimeBlocks
+                (acc ++ [TimeBlock time (addHoursToLocalTime time (hoursEstimate t)) t])
+                ts
+                (addHoursToLocalTime time (hoursEstimate t))
+        | otherwise ->
+            buildTimeBlocks
+                acc
+                ts
+                (addHoursToLocalTime time (hoursEstimate t))
+
+    where
+        addHoursToLocalTime lt hours = utcToLocalTime utc $ addUTCTime (fromIntegral (hours * 3600)) $ localTimeToUTC utc lt
+        utc = hoursToTimeZone 0
+
+getLocalTime :: IO LocalTime
+getLocalTime = do
+  utcTime <- getCurrentTime
+  tz <- getCurrentTimeZone
+  return $ utcToLocalTime tz utcTime
+
+buildCalendar :: Calendar -> Heap.Heap Task -> IO Calendar
+buildCalendar cal heap = do
+    localTime <- getLocalTime
+    let (task, _) = popMaxPriorityTask heap
+    chunks <- breakdownTask [] task
+    return $ Calendar {timeBlocks = buildTimeBlocks [] chunks localTime}
+
+getCalendar :: Calendar -> Heap.Heap Task -> IO Calendar
+getCalendar loadedCalendar queue =
+  -- null [] -> True
+  let isEmptyCalendar = null (timeBlocks loadedCalendar)
+  in case isEmptyCalendar of
+      True -> buildCalendar loadedCalendar queue
+      False -> return loadedCalendar
+
 main :: IO ()
 main = do
-{-
- - load queue from json or create empty one
- - prompt user for task
- - add task to the queue
- - let user know if successful or not
- - save queue to json
+ {-
+ - [x] should help you prioritize what you should work on right now
+ - [] should time block chunks throughout your day
+ - [] should help you break large goals down into 1 hour chunks
+ - [] should allow you to prioritize a new task
  - -}
   let dbPath = "stack_ranked_task_list.json"
-  queue <- getQueue dbPath
-  task <- promptTask
-  putStrLn ("New task created:\n" ++ show task)
-  let queue' = Heap.insert task queue
+  let calendarPath = "daily_calendar.json"
+  loadedQueue <- getQueue dbPath
+  queue <- if Heap.null loadedQueue
+      then do
+        task <- promptTask
+        return $ Heap.insert task Heap.empty
+      else return loadedQueue
+  loadedCalendar <- deserializeCalendar calendarPath
+  calendar <- getCalendar loadedCalendar queue
   putStrLn "Current queue:"
-  mapM_ print (toList queue')
-  writeQueueToFile dbPath queue'
+  mapM_ print (toList queue)
+  putStrLn "Current calendar:"
+  mapM_ print (timeBlocks calendar)
+  writeQueueToFile dbPath queue
+  writeCalendarToFile calendarPath calendar
 
 

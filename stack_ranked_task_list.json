@@ -1,0 +1,30 @@
+[
+    {
+        "description": "buy autoforwardsms.com",
+        "hoursEstimate": 150,
+        "impact": 9,
+        "roi": 0.48,
+        "urgency": 8
+    },
+    {
+        "description": "create shopify store backup competitor",
+        "hoursEstimate": 150,
+        "impact": 7,
+        "roi": 0.37333333333333335,
+        "urgency": 8
+    },
+    {
+        "description": "create 1031exchange.ai",
+        "hoursEstimate": 150,
+        "impact": 5,
+        "roi": 0.26666666666666666,
+        "urgency": 8
+    },
+    {
+        "description": "a",
+        "hoursEstimate": 10,
+        "impact": 1,
+        "roi": 0.2,
+        "urgency": 2
+    }
+]
