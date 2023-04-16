@@ -33,12 +33,6 @@ data TimeBlock = TimeBlock
     , task      :: Task
     } deriving (Show, Generic, FromJSON, ToJSON)
 
-data Project = Project
-    { notStarted :: [Task]
-    , inProgress :: [Task]
-    , done       :: [Task]
-    } deriving (Show, Generic, ToJSON, FromJSON)
-
 data Task = Task
   { description   :: String
   , impact        :: Int
