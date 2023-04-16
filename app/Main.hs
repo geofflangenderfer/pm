@@ -1,7 +1,7 @@
-{-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE BlockArguments    #-}
+{-# LANGUAGE DeriveAnyClass    #-}
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveGeneric  #-}
 
 module Main where
 
@@ -36,7 +36,7 @@ data TimeBlock = TimeBlock
 data Project = Project
     { notStarted :: [Task]
     , inProgress :: [Task]
-    , done :: [Task]
+    , done       :: [Task]
     } deriving (Show, Generic, ToJSON, FromJSON)
 
 data Task = Task
@@ -195,7 +195,7 @@ getCalendar loadedCalendar queue =
   -- null [] -> True
   let isEmptyCalendar = null (timeBlocks loadedCalendar)
   in case isEmptyCalendar of
-      True -> buildCalendar loadedCalendar queue
+      True  -> buildCalendar loadedCalendar queue
       False -> return loadedCalendar
 
 main :: IO ()
